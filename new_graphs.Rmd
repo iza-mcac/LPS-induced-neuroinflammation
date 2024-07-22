@@ -1,0 +1,236 @@
+---
+title: "new_graphs"
+author: "Iza"
+date: "2024-04-16"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(ghibli)
+```
+
+Run the other script until line 43
+
+```{r, warning=FALSE}
+PCA_Sinucleinopatia_fix %>% 
+  mutate(Timepoint = factor(Timepoint, levels=c("4 dpi", "23 dpi"))) %>%
+  filter(Gene == "SNCA" & Measure == "PCR") %>%
+  ggplot(aes(x = Timepoint, y = Value, group = Condition, color = Condition))+
+  geom_smooth(aes(fill = Condition))+
+  geom_point(aes(color = Condition))+
+  facet_wrap(~Location, nrow = 3)+
+  scale_y_log10() +
+  theme_bw()+
+  scale_color_ghibli_d("MarnieMedium1", direction = -1)+
+  scale_fill_ghibli_d("MarnieMedium1", direction = -1)
+
+cowplot::ggsave2("Plots/final_forpaper/SNCA_PCR_Smoothgraph_vert.pdf", height = 7, width = 4)
+  
+
+```
+
+horizontal mode
+
+```{r, warning=FALSE}
+PCA_Sinucleinopatia_fix %>% 
+  mutate(Timepoint = factor(Timepoint, levels=c("4 dpi", "23 dpi"))) %>%
+  filter(Gene == "SNCA" & Measure == "PCR") %>%
+  ggplot(aes(x = Timepoint, y = Value, group = Condition, color = Condition))+
+  geom_smooth(aes(fill = Condition))+
+  geom_point(aes(color = Condition))+
+  facet_wrap(~Location, ncol = 3)+
+  scale_y_log10() +
+  theme_bw()+
+  scale_color_ghibli_d("MarnieMedium1", direction = -1)+
+  scale_fill_ghibli_d("MarnieMedium1", direction = -1)
+
+cowplot::ggsave2("Plots/final_forpaper/SNCA_PCR_Smoothgraph_horiz.pdf", height = 3, width = 8.5)
+
+```
+
+correlation plot
+
+Make a correlation matrix
+
+cor ELISA
+```{r}
+PCA_Sinucleinopatia_ELISa <- PCA_Sinucleinopatia_fix %>% filter(Measure == "ELISA")
+
+cor_ELISa_estriado <- PCA_Sinucleinopatia_ELISa %>% filter(Location == "Estriado") %>% select(1,2,6) 
+counts_estriado_elisa<- cor_ELISa_estriado %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_estriado_elisa<-counts_estriado_elisa %>% column_to_rownames(var = "Gene")
+
+
+cor_ELISa_Hipocampo <- PCA_Sinucleinopatia_ELISa %>% filter(Location == "Hipocampo") %>% select(1,2,6)
+counts_hipocampo_elisa<- cor_ELISa_Hipocampo %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_hipocampo_elisa<-counts_hipocampo_elisa %>% column_to_rownames(var = "Gene")
+
+cor_ELISa_SubtanciaNegra <- PCA_Sinucleinopatia_ELISa %>% filter(Location == "SubtanciaNegra") %>% select(1,2,6) 
+counts_subtancianegra_elisa<- cor_ELISa_SubtanciaNegra %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_subtancianegra_elisa<-counts_subtancianegra_elisa %>% column_to_rownames(var = "Gene")
+```
+
+Correlation and plot
+
+```{r}
+
+pdf(file = "Plots/final_forpaper/Corrplot_ELISA_Estriado.pdf")
+corrr_estriado_elisa<- t(counts_estriado_elisa) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_estriado_elisa, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_ELISA_Hipocampo.pdf")
+corrr_hipocampo_elisa<- t(counts_hipocampo_elisa) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_hipocampo_elisa, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_ELISA_SubstanciaNegra.pdf")
+corrr_substancianegra_elisa<- t(counts_subtancianegra_elisa) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_substancianegra_elisa, type="full", order="hclust", col= colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+```
+
+Cor PCR all
+
+```{r}
+PCA_Sinucleinopatia_PCR <- PCA_Sinucleinopatia_fix %>% filter(Measure == "PCR")
+
+cor_PCR_estriado <- PCA_Sinucleinopatia_PCR %>% filter(Location == "Estriado") %>% select(1,2,6) 
+counts_estriado_pcr<- cor_PCR_estriado %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_estriado_pcr<-counts_estriado_pcr %>% column_to_rownames(var = "Gene")
+
+
+cor_PCR_Hipocampo <- PCA_Sinucleinopatia_PCR %>% filter(Location == "Hipocampo") %>% select(1,2,6)
+counts_hipocampo_pcr<- cor_PCR_Hipocampo %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_hipocampo_pcr<-counts_hipocampo_pcr %>% column_to_rownames(var = "Gene")
+
+cor_PCR_SubtanciaNegra <- PCA_Sinucleinopatia_PCR %>% filter(Location == "SubtanciaNegra") %>% select(1,2,6) 
+counts_subtancianegra_PCR<- cor_PCR_SubtanciaNegra %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_subtancianegra_PCR<-counts_subtancianegra_PCR %>% column_to_rownames(var = "Gene")
+
+```
+
+Plot
+
+```{r}
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_Estriado.pdf")
+corrr_estriado_pcr<- t(counts_estriado_pcr) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_estriado_pcr, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_Hipocampo.pdf")
+corrr_hipocampo_pcr<- t(counts_hipocampo_pcr) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_hipocampo_pcr, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_SubstanciaNegra.pdf")
+corrr_substancianegra_pcr<- t(counts_subtancianegra_PCR) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_substancianegra_pcr, type="full", order="hclust", col= colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+```
+
+Only inflamassome
+```{r}
+PCA_Sinucleinopatia_PCR_filt <- PCA_Sinucleinopatia_fix %>% filter(Measure == "PCR" & Gene %in% c("P50", "P65", "NLRP3", "ASC", "Caspase-1", "1beta", "IL-18"))
+
+cor_PCR_estriado <- PCA_Sinucleinopatia_PCR_filt %>% filter(Location == "Estriado") %>% select(1,2,6) 
+counts_estriado_pcr<- cor_PCR_estriado %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_estriado_pcr<-counts_estriado_pcr %>% column_to_rownames(var = "Gene")
+
+
+cor_PCR_Hipocampo <- PCA_Sinucleinopatia_PCR_filt %>% filter(Location == "Hipocampo") %>% select(1,2,6)
+counts_hipocampo_pcr<- cor_PCR_Hipocampo %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_hipocampo_pcr<-counts_hipocampo_pcr %>% column_to_rownames(var = "Gene")
+
+cor_PCR_SubtanciaNegra <- PCA_Sinucleinopatia_PCR_filt %>% filter(Location == "SubtanciaNegra") %>% select(1,2,6) 
+counts_subtancianegra_PCR<- cor_PCR_SubtanciaNegra %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_subtancianegra_PCR<-counts_subtancianegra_PCR %>% column_to_rownames(var = "Gene")
+```
+
+Plot
+```{r}
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_Estriado_inflamassome.pdf")
+corrr_estriado_pcr<- t(counts_estriado_pcr) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_estriado_pcr, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_Hipocampo_inflamassome.pdf")
+corrr_hipocampo_pcr<- t(counts_hipocampo_pcr) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_hipocampo_pcr, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_SubstanciaNegra_inflamassome.pdf")
+corrr_substancianegra_pcr<- t(counts_subtancianegra_PCR) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_substancianegra_pcr, type="full", order="hclust", col= colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+```
+
+Only non_inflamassome
+
+Only inflamassome
+```{r}
+PCA_Sinucleinopatia_PCR_filt <- PCA_Sinucleinopatia_fix %>% filter(Measure == "PCR" & !Gene %in% c("P50", "P65", "NLRP3", "ASC", "Caspase-1", "1beta", "IL-18"))
+
+cor_PCR_estriado <- PCA_Sinucleinopatia_PCR_filt %>% filter(Location == "Estriado") %>% select(1,2,6) 
+counts_estriado_pcr<- cor_PCR_estriado %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_estriado_pcr<-counts_estriado_pcr %>% column_to_rownames(var = "Gene")
+
+
+cor_PCR_Hipocampo <- PCA_Sinucleinopatia_PCR_filt %>% filter(Location == "Hipocampo") %>% select(1,2,6)
+counts_hipocampo_pcr<- cor_PCR_Hipocampo %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_hipocampo_pcr<-counts_hipocampo_pcr %>% column_to_rownames(var = "Gene")
+
+cor_PCR_SubtanciaNegra <- PCA_Sinucleinopatia_PCR_filt %>% filter(Location == "SubtanciaNegra") %>% select(1,2,6) 
+counts_subtancianegra_PCR<- cor_PCR_SubtanciaNegra %>%
+  pivot_wider(names_from = c(Replica), values_from = Value, names_prefix = "Replicate_", values_fn = median)
+counts_subtancianegra_PCR<-counts_subtancianegra_PCR %>% column_to_rownames(var = "Gene")
+```
+
+Plot
+```{r}
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_Estriado_chaperones.pdf")
+corrr_estriado_pcr<- t(counts_estriado_pcr) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_estriado_pcr, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_Hipocampo_chaperones.pdf")
+corrr_hipocampo_pcr<- t(counts_hipocampo_pcr) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_hipocampo_pcr, type="full", order="hclust", col = colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+pdf(file = "Plots/final_forpaper/Corrplot_PCR_SubstanciaNegra_chaperones.pdf")
+corrr_substancianegra_pcr<- t(counts_subtancianegra_PCR) %>% cor(method = "pearson", use = "pairwise.complete.obs")
+corrplot(corrr_substancianegra_pcr, type="full", order="hclust", col= colorRampPalette(c("#67B8D6FF","#FFFFFF", "#E9D097FF"))(11), tl.col = "black", 
+         addrect = 2, rect.col = "grey8")
+dev.off()
+
+```
+

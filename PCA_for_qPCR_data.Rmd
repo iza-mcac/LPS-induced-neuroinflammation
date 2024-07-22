@@ -1,0 +1,462 @@
+---
+title: "PCA_qPCR"
+author: "Iza"
+date: "2024-03-02"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(factoextra) 
+library(FactoMineR)
+library(bulkAnalyseR)
+```
+
+Load dataset
+
+```{r}
+library(readxl)
+Tabela_PCA_Sinucleinopatia <- read_excel("rawdata/Tabela PCA - Projeto Sinucleinopatia .xlsx")
+
+PCA_Sinucleinopatia_fix <- read_csv("rawdata/Tabela_PCA_fixed.csv")
+View(Tabela_PCA_Projeto_Sinucleinopatia_)
+
+#str(Tabela_PCA_Projeto_Sinucleinopatia_)
+```
+
+Make the pivot for replicates
+
+```{r}
+
+
+Tabela_PCA_Sinucleinopatia_wid<-PCA_Sinucleinopatia_fix %>% pivot_wider(names_from = Replica, values_from = Value)
+
+#testeeee_2 <-PCA_Sinucleinopatia_fix %>%
+ # dplyr::group_by(Gene,Condition, Location, Timepoint, Replica, Measure) %>%
+  #dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
+  #dplyr::filter(n > 1L)
+
+names(Tabela_PCA_Sinucleinopatia_wid) <-c("Gene", "Condition", "Location", "Timepoint", "Measure", "m1", "m2", "m3", "m4", "m5", "m6", "m7")
+```
+
+Make the PCAs
+
+```{r}
+
+Tabela_PCA_Sinucleinopatia_wid$m1
+
+Tabela_PCA_Sinucleinopatia_wid$m7 <- ifelse(is.na(Tabela_PCA_Sinucleinopatia_wid$m7), 0, Tabela_PCA_Sinucleinopatia_wid$m7)
+
+Tabela_PCA_Sinucleinopatia_wid$m6 <- ifelse(is.na(Tabela_PCA_Sinucleinopatia_wid$m6), 0, Tabela_PCA_Sinucleinopatia_wid$m6)
+
+Tabela_PCA_Sinucleinopatia_wid$m5 <- ifelse(is.na(Tabela_PCA_Sinucleinopatia_wid$m5), 0, Tabela_PCA_Sinucleinopatia_wid$m5)
+
+teste_pca <- unite(Tabela_PCA_Sinucleinopatia_wid, names_comb, 1:5, na.rm = TRUE, sep = "_", remove= FALSE)
+
+#PCA_neuro<-teste_pca %>% select(7:13)
+rownames(teste_pca) <- teste_pca$names_comb
+
+numeric_df <- teste_pca %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .))
+
+rownames(numeric_df) <- teste_pca$names_comb
+
+pca_result <- prcomp(numeric_df, scale. = TRUE)
+
+pc_scores <- as.data.frame(pca_result$x)
+
+pc_scores_rn<-rownames_to_column(pc_scores)
+
+metadata_pca<-teste_pca %>% select(1:6)
+
+
+
+```
+
+Teste
+```{r}
+#variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2) * 100
+
+# Combine PC scores with metadata
+df_pca <- cbind(pc_scores, metadata_pca)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result, 
+                         geom = "point", 
+                         habillage = df_pca$Location,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_both_by_Location.pdf", height = 6, width = 8)
+
+```
+
+
+Now for only ELISA 
+
+```{r}
+
+rownames(teste_pca) <- teste_pca$names_comb
+
+teste_pca_ELISA <-teste_pca %>% filter(Measure == "ELISA")
+
+numeric_df_elis <- teste_pca_ELISA %>%
+  #filter(Measure == "ELISA") %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .)) %>%
+  select(-7)
+
+rownames(numeric_df_elis) <- teste_pca_ELISA$names_comb
+
+pca_result_elis <- prcomp(numeric_df_elis, scale. = TRUE)
+
+pc_scores_elis <- as.data.frame(pca_result_elis$x)
+
+pc_scores_elis_rn<-rownames_to_column(pc_scores_elis)
+
+metadata_pca_elisa<-teste_pca_ELISA %>% select(1:6)
+
+
+# Combine PC scores with metadata
+df_pca_elisa <- cbind(pc_scores_elis, metadata_pca_elisa)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_elis, 
+                         geom = "point", 
+                         habillage = df_pca_elisa$Location,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_ELISA_by_Location.pdf", height = 6, width = 8)
+
+
+
+```
+
+Now for only PCR
+
+```{r}
+
+rownames(teste_pca) <- teste_pca$names_comb
+
+teste_pca_PCR <-teste_pca %>% filter(Measure == "PCR")
+
+numeric_df_pcr <- teste_pca_PCR %>%
+  #filter(Measure == "PCR") %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .)) 
+
+rownames(numeric_df_pcr) <- teste_pca_PCR$names_comb
+
+pca_result_pcr <- prcomp(numeric_df_pcr, scale. = TRUE)
+
+pc_scores_pcr <- as.data.frame(pca_result_pcr$x)
+
+pc_scores_pcr_rn<-rownames_to_column(pc_scores_pcr)
+
+metadata_pca_pcr<-teste_pca_PCR %>% select(1:6)
+
+
+# Combine PC scores with metadata
+df_pca_pcr <- cbind(pc_scores_pcr, metadata_pca_pcr)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_pcr, 
+                         geom = "point", 
+                         habillage = df_pca_pcr$Timepoint,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_PCR_by_Timepoint.pdf", height = 6, width = 8)
+
+
+
+```
+
+Without separated genes
+PCR
+
+```{r}
+Tabela_PCA_Sinucleinopatia_wid<-PCA_Sinucleinopatia_fix %>% pivot_wider(names_from = Replica, values_from = Value)
+
+PCA_genes_combined <-Tabela_PCA_Sinucleinopatia_wid %>%
+  select(-Gene) %>%
+  filter(Measure == "PCR") %>%
+  group_by(Condition, Location, Timepoint) %>%
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+
+###
+numeric_df_pcr_combined <- PCA_genes_combined[,4:10]
+
+names(PCA_genes_combined) <- c("Condition","Location","Timepoint","m1","m2","m3","m4","m5","m6","m7" )
+
+teste_pca_PCR <- unite(PCA_genes_combined, names_comb, 1:3, na.rm = TRUE, sep = "_", remove= FALSE)
+
+rownames(numeric_df_pcr_combined) <- teste_pca_PCR$names_comb
+
+numeric_df_pcr_combined$m7 <- ifelse(is.na(numeric_df_pcr_combined$m7), 0, numeric_df_pcr_combined$m7)
+
+```
+
+
+```{r}
+#
+pca_result_pcr_comb <- prcomp(numeric_df_pcr_combined, scale. = TRUE)
+
+pc_scores_pcr_comb <- as.data.frame(pca_result_pcr_comb$x)
+
+pc_scores_pcr_comb_rn<-rownames_to_column(pc_scores_pcr_comb)
+
+metadata_pca_pcr_comb<-PCA_genes_combined[1:3]
+
+
+# Combine PC scores with metadata
+df_pca_pcr_comb <- cbind(pc_scores_pcr_comb, metadata_pca_pcr_comb)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_pcr_comb, 
+                         geom = "point", 
+                         habillage = df_pca_pcr_comb$Timepoint,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_groupedgenevalues_PCR_by_Timepoint.pdf", height = 6, width = 8)
+
+```
+
+
+
+Without separated genes
+ELISA
+
+```{r}
+
+PCA_genes_combined <-Tabela_PCA_Sinucleinopatia_wid %>%
+  select(-Gene) %>%
+  filter(Measure == "ELISA") %>%
+  group_by(Condition, Location, Timepoint) %>%
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+
+###
+
+names(PCA_genes_combined) <- c("Condition","Location","Timepoint","m1","m2","m3","m4","m5","m6","m7" )
+numeric_df_elisa_combined <- PCA_genes_combined[,4:8]
+
+
+teste_pca_ELISA <- unite(PCA_genes_combined, names_comb, 1:3, na.rm = TRUE, sep = "_", remove= FALSE)
+
+rownames(numeric_df_elisa_combined) <- teste_pca_ELISA$names_comb
+
+
+pca_result_elisa_comb <- prcomp(numeric_df_elisa_combined, scale. = TRUE)
+
+pc_scores_elisa_comb <- as.data.frame(pca_result_elisa_comb$x)
+
+pc_scores_elisa_comb_rn<-rownames_to_column(pc_scores_elisa_comb)
+
+metadata_pca_elisa_comb<-PCA_genes_combined[1:3]
+
+
+# Combine PC scores with metadata
+df_pca_elisa_comb <- cbind(pc_scores_elisa_comb, metadata_pca_elisa_comb)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_elisa_comb, 
+                         geom = "point", 
+                         habillage = df_pca_elisa_comb$Location,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_groupedgenevalues_ELISA_by_Location.pdf", height = 6, width = 8)
+
+```
+
+The subsets
+
+ELISA
+```{r}
+
+numeric_df_elisa_combined_subset <- teste_pca %>% filter(Location == "Hipocampo"& Measure == "ELISA")
+
+
+numeric_df_elisa_combined_est_f <- numeric_df_elisa_combined_subset %>%
+  #filter(Measure == "ELISA") %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .)) 
+
+rownames(numeric_df_elisa_combined_est_f) <- numeric_df_elisa_combined_subset$names_comb
+
+numeric_df_elisa_combined_est_f<-numeric_df_elisa_combined_est_f %>% select(-7)
+
+pca_result_elisa_est <- prcomp(numeric_df_elisa_combined_est_f, scale. = TRUE)
+
+pca_result_elisa_est_df <- as.data.frame(pca_result_elisa_est$x)
+
+pca_result_elisa_est_rn<-rownames_to_column(pca_result_elisa_est_df)
+
+metadata_pca_elisa<- teste_pca %>% filter(Location == "Hipocampo" & Measure == "ELISA")
+  
+
+
+# Combine PC scores with metadata
+df_pca_elisa_comb_est <- cbind(pca_result_elisa_est_df, metadata_pca_elisa)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_elisa_est, 
+                         geom = "point", 
+                         habillage = df_pca_elisa_comb_est$Condition,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_sepgenes_Hipocampoonly_ELISA_byCondition.pdf", height = 6, width = 8)
+
+```
+
+
+PCR
+
+```{r}
+
+numeric_df_elisa_combined_subset <- teste_pca %>% filter(Location == "SubtanciaNegra"& Measure == "PCR")
+
+
+numeric_df_elisa_combined_est_f <- numeric_df_elisa_combined_subset %>%
+  #filter(Measure == "ELISA") %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .)) 
+
+rownames(numeric_df_elisa_combined_est_f) <- numeric_df_elisa_combined_subset$names_comb
+
+#numeric_df_elisa_combined_est_f<-numeric_df_elisa_combined_est_f %>% select(-7)
+
+pca_result_elisa_est <- prcomp(numeric_df_elisa_combined_est_f, scale. = TRUE)
+
+pca_result_elisa_est_df <- as.data.frame(pca_result_elisa_est$x)
+
+pca_result_elisa_est_rn<-rownames_to_column(pca_result_elisa_est_df)
+
+metadata_pca_elisa<- teste_pca %>% filter(Location == "SubtanciaNegra" & Measure == "PCR")
+  
+
+
+# Combine PC scores with metadata
+df_pca_elisa_comb_est <- cbind(pca_result_elisa_est_df, metadata_pca_elisa)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_elisa_est, 
+                         geom = "point", 
+                         habillage = df_pca_elisa_comb_est$Gene,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE)
+
+pca_plot
+
+ggsave("PCA_sepgenes_SubtanciaNegraonly_PCR_byGene.pdf", height = 6, width = 8)
+
+```
+
+Separating inflamassome componentes
+
+PCR
+
+```{r}
+
+numeric_df_elisa_combined_subset <- teste_pca %>% filter(Location == "Hipocampo"& Measure == "PCR" & Gene %in% c("NLRP3", "P50", "Caspase-1"))
+
+
+numeric_df_elisa_combined_est_f <- numeric_df_elisa_combined_subset %>%
+  #filter(Measure == "ELISA") %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .)) 
+
+rownames(numeric_df_elisa_combined_est_f) <- numeric_df_elisa_combined_subset$names_comb
+
+numeric_df_elisa_combined_est_f<-numeric_df_elisa_combined_est_f %>% select(-7)
+
+pca_result_elisa_est <- prcomp(numeric_df_elisa_combined_est_f, scale. = TRUE)
+
+pca_result_elisa_est_df <- as.data.frame(pca_result_elisa_est$x)
+
+pca_result_elisa_est_rn<-rownames_to_column(pca_result_elisa_est_df)
+
+metadata_pca_elisa<- teste_pca %>% filter(Location == "Hipocampo" & Measure == "PCR" & Gene %in% c("NLRP3", "P50", "Caspase-1"))
+  
+metadata_pca_elisa_comb <- unite(metadata_pca_elisa, gene_cond, 2:3, na.rm = TRUE, sep = "_", remove= FALSE)
+
+metadata_pca_elisa_comb <- unite(metadata_pca_elisa_comb, gene_time, c(3,6), na.rm = TRUE, sep = "_", remove= FALSE)
+
+# Combine PC scores with metadata
+df_pca_elisa_comb_est <- cbind(pca_result_elisa_est_df, metadata_pca_elisa_comb)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_elisa_est, 
+                         geom = "point", 
+                         habillage = df_pca_elisa_comb_est$gene_cond,
+                         ellipse.type = "convex",
+                         addEllipses = FALSE
+                         )
+
+pca_plot
+
+ggsave("PCA_Inflamasosmeonly_Hipocampoonly_PCR_GeneandCondition.pdf", height = 6, width = 8)
+
+```
+
+PCR non inflamasosme
+
+```{r}
+
+numeric_df_elisa_combined_subset <- teste_pca %>% filter(Location == "SubtanciaNegra"& Measure == "PCR" & Gene %in% c("NLRP3", "P50", "Caspase-1"))
+
+
+numeric_df_elisa_combined_est_f <- numeric_df_elisa_combined_subset %>%
+  #filter(Measure == "ELISA") %>%
+  select_if(is.numeric) %>%
+  mutate_all(~if_else(is.na(.), mean(., na.rm = TRUE), .)) 
+
+rownames(numeric_df_elisa_combined_est_f) <- numeric_df_elisa_combined_subset$names_comb
+
+numeric_df_elisa_combined_est_f<-numeric_df_elisa_combined_est_f %>% select(-7)
+
+pca_result_elisa_est <- prcomp(numeric_df_elisa_combined_est_f, scale. = TRUE)
+
+pca_result_elisa_est_df <- as.data.frame(pca_result_elisa_est$x)
+
+pca_result_elisa_est_rn<-rownames_to_column(pca_result_elisa_est_df)
+
+metadata_pca_elisa<- teste_pca %>% filter(Location == "SubtanciaNegra" & Measure == "PCR" & Gene %in% c("NLRP3", "P50", "Caspase-1"))
+  
+metadata_pca_elisa_comb <- unite(metadata_pca_elisa, gene_cond, 2:3, na.rm = TRUE, sep = "_", remove= FALSE)
+
+metadata_pca_elisa_comb <- unite(metadata_pca_elisa_comb, gene_time, c(3,6), na.rm = TRUE, sep = "_", remove= FALSE)
+
+# Combine PC scores with metadata
+df_pca_elisa_comb_est <- cbind(pca_result_elisa_est_df, metadata_pca_elisa_comb)
+
+# Create a PCA plot with confidence ellipses
+pca_plot <- fviz_pca_ind(pca_result_elisa_est, 
+                         geom = "point", 
+                         habillage = df_pca_elisa_comb_est$gene_cond,
+                         ellipse.type = "convex",
+                         addEllipses = TRUE
+                         )
+
+pca_plot
+
+ggsave("PCA_Inflamasosmeonly_SubtanciaNegraonly_PCR_GeneandCondition.pdf", height = 6, width = 8)
+
+```
